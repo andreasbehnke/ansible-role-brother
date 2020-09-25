@@ -1,10 +1,12 @@
 ---
 - name: ensure needed dependencies are installed
   apt:
-    name: "{{ item }}"
-  with_items:
-    - cups
-    - expect
+    name:
+      - cups
+      - expect
+      - lib32z1
+      - lib32ncurses5
+      - lib32stdc++6
   when: ansible_os_family == "Debian"
   tags: ["packages","brother"]
 
@@ -34,7 +36,7 @@
     set timeout 2
     spawn /usr/bin/lpstat -a
     expect {
-        "{{item}}" { exit 4 }
+        "{{item.name}}" { exit 4 }
         timeout {}
     }
 
@@ -42,43 +44,37 @@
     set timeout 180
 
     # Run Brother script for printer
-    spawn {{brother_bin_dir}}/linux-brprinter-installer {{item}}
+    spawn {{brother_bin_dir}}/linux-brprinter-installer {{item.name}}
 
     expect {
-        # Prompt 1: OK? [y/N]
         "OK?" {
             send "y\r"
             exp_continue
         }
-        # Prompt 2: Do you agree? [Y/n]
-        # This prompt does not appear if you already agreed
-        # Also, it can appear multiple times, depending on the needed packages
-        # to download
         "Do you agree" {
-            send "y\r"
+            send "Y\r"
             exp_continue
         }
-        # Prompt 3: Will you specify the Device URI? [Y/n]
         "specify the Device URI" {
-            send "y\r"
+            send "Y\r"
             exp_continue
         }
-        # Prompt 4: select the number of destination Device URI.
-        # "A" is the Auto option
         "number of destination Device URI" {
-            send "A\r"
+            send "I\r"
             exp_continue
         }
-        # Prompt 5: Test Print? [y/N]
+        "enter IP address" {
+            send "{{item.ip}}\r"
+            exp_continue
+        }
         "Test Print" {
-            send "n\r"
+            send "N\r"
             exp_continue
         }
         "Hit Enter" {
             send "\r"
             exp_continue
         }
-        # Script finished
         eof {}
     }
   args:
